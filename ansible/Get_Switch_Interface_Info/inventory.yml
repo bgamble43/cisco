@@ -1,0 +1,9 @@
+---
+
+access:
+  hosts:
+    Switch1:
+      ansible_host: 192.168.1.1
+    Switch2:
+      ansible_host: 192.168.1.2
+    

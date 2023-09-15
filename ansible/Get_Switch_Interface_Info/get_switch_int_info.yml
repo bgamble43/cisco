@@ -1,0 +1,54 @@
+- name: Gather facts for l2 interfaces
+  hosts: access
+  gather_facts: no
+  connection: network_cli 
+
+  vars: 
+  
+    ansible_connection: ansible.netcommon.network_cli
+    ansible_network_os: cisco.ios.ios
+    ansible_become: yes
+    ansible_become_method: enable
+    ansible_user: '{{ lookup("env", "ANSIBLE_USER") }}'
+    ansible_password: '{{ lookup("env", "ANSIBLE_PASSWORD") }}'
+    if_desc_clean: []
+    header: "name,description"
+
+  tasks:
+    - name: Get interface info
+      cisco.ios.ios_interfaces:
+        config:
+        state: gathered
+      register: if_info
+
+    - name: Create variable to hold interface names and descriptions
+      debug:
+        msg: '"{{ item.name }} : {{ item.description }}"'
+      loop: "{{ if_info.gathered }}"
+      when:
+        - item.description is defined
+      register: if_desc
+
+#    - name: Print if_desc variable with non-skipped iterations of if_info
+#      debug:
+#        msg: "{{ item }}"
+#      loop: "{{ if_desc.results }}"
+#      when: 
+#        - item.skipped is not defined
+
+    - name: Load if_desc variable with non-skipped iterations of if_info
+      set_fact: 
+        if_desc_clean: "{{ if_desc_clean + [ item.item ] }}"
+      loop: "{{ if_desc.results }}"
+      when: 
+        - item.skipped is not true
+
+#    - name: Print interface descriptions
+#      debug:
+#        msg: "{{ item }}"
+#      loop: "{{ if_desc_clean }}"
+
+    - name: Generate CSV content
+      template:
+        src: templates/csv.j2
+        dest: output/{{ inventory_hostname }}_int_descript.csv
